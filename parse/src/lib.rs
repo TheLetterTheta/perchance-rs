@@ -1,38 +1,29 @@
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::Path,
-};
+#![allow(clippy::result_large_err)]
+// TODO: Remove this ^^^
+
+use std::{fs, path::Path};
 
 mod ast;
 mod error;
+mod integration;
 mod macros;
 
 use chrono::Utc;
-use error::{ParseError, ParseResult};
-use fern::InitError;
-use lazy_static::lazy_static;
+use error::ParseResult;
 use pest::Parser;
 use pest_derive::Parser;
-use regex::Regex;
 
 use crate::{
     ast::{item::Item, Parse},
     error::unexpected,
 };
 
-lazy_static! {
-    pub static ref RE_STARTSWITH_WHITESPACE: Regex = Regex::new(r#"^\s+"#).unwrap();
-}
-
-pub const NEWLINE_CHR: &'static str = "\n";
-
 #[derive(Parser)]
 #[grammar = "perchance.pest"]
 struct PerchanceParser();
 
 fn setup_logger() -> ParseResult<()> {
-    match fern::Dispatch::new()
+    let _ = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
                 "[{} {} {}] {}",
@@ -45,36 +36,21 @@ fn setup_logger() -> ParseResult<()> {
         .level(log::LevelFilter::Info)
         .chain(std::io::stdout())
         .chain(fern::log_file("output.log")?)
-        .apply()
-    {
-        Ok(_) => Ok(()),
-        Err(_) => {
-            // Eat the set_logger error, we dont care if we're trying to re-init the logger.
-            Ok(())
-        }
-    }
-}
-fn main() {
-    let items = parse_file("samples/complex.pc").expect("failed");
-    println!("{:#?}", items);
+        .apply();
+    // Eat the set_logger error, we dont care if we're trying to re-init the logger.
+    Ok(())
 }
 
-fn parse_file<P: AsRef<Path>>(path: P) -> ParseResult<Vec<Item>> {
+pub fn parse_file<P: AsRef<Path>>(path: P) -> ParseResult<Vec<Item>> {
     setup_logger()?;
     let unparsed_file = fs::read_to_string(path)?;
 
     parse_string(unparsed_file)
 }
 
-fn parse_string<S: ToString>(content: S) -> ParseResult<Vec<Item>> {
+pub fn parse_string<S: ToString>(content: S) -> ParseResult<Vec<Item>> {
     let content = content.to_string();
-    let mut file = match PerchanceParser::parse(Rule::file, &content) {
-        Err(e) => {
-            eprintln!("{}", e);
-            panic!("{:?}", e.variant)
-        }
-        Ok(f) => f,
-    };
+    let mut file = PerchanceParser::parse(Rule::file, &content)?;
 
     let file = file.next().unwrap(); // get and unwrap the `file` rule; never fails
 

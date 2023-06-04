@@ -1,10 +1,10 @@
+use pest::error::Error as PestError;
 use std::io::Error as IOError;
 use std::num::ParseFloatError;
 
 use thiserror::Error;
 
 use crate::Rule;
-
 #[derive(Debug, Error)]
 pub enum ParseError {
     #[error("Invalid rule. Expected {expected:?} got {actual:?}")]
@@ -19,6 +19,8 @@ pub enum ParseError {
     IOError(#[from] IOError),
     #[error("Unexpected rule({origin}) : {rule}")]
     UnexpectedRule { rule: String, origin: &'static str },
+    #[error("Failed to parse: {0}")]
+    PestError(#[from] PestError<Rule>),
 }
 
 pub fn missing(slug: &'static str) -> ParseError {

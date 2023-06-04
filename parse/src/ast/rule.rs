@@ -15,9 +15,9 @@ pub enum PerchanceRuleInner {
     Odds {
         modifier: f32,
     },
-    Options(Vec<Box<PerchanceRule>>),
+    Options(Vec<PerchanceRule>),
     Reference {
-        chain: Vec<Box<PerchanceRule>>,
+        chain: Vec<PerchanceRule>,
     },
     Import {
         generator: String,
@@ -28,7 +28,7 @@ pub enum PerchanceRuleInner {
     },
     Name(String),
     Raw(String),
-    Compound(Vec<Box<PerchanceRule>>),
+    Compound(Vec<PerchanceRule>),
     #[default]
     Nop,
 }
@@ -119,9 +119,7 @@ impl PerchanceRule {
 
         trace!("[Start:2] get-references");
         let rules = line.into_inner();
-        let chain = rules
-            .map(Self::parse_boxed)
-            .collect::<ParseResult<Vec<_>>>()?;
+        let chain = rules.map(Self::parse).collect::<ParseResult<Vec<_>>>()?;
         trace!("[Start:2] get-references");
 
         trace!("[EndOf] parse-reference");
@@ -153,7 +151,7 @@ impl PerchanceRule {
         trace!("[Start:3] parse-rules(is-compound)");
         let rules = rules
             .into_iter()
-            .map(Self::parse_boxed)
+            .map(Self::parse)
             .collect::<ParseResult<Vec<_>>>()?;
         trace!("[EndOf:3] parse-rules(is-compound)");
 
@@ -175,9 +173,7 @@ impl PerchanceRule {
 
         trace!("[Start:2] get-options");
         let rules = line.into_inner();
-        let options = rules
-            .map(Self::parse_boxed)
-            .collect::<ParseResult<Vec<_>>>()?;
+        let options = rules.map(Self::parse).collect::<ParseResult<Vec<_>>>()?;
         trace!("[Start:2] get-options");
 
         trace!("[EndOf] parse-shorthand");
@@ -242,10 +238,7 @@ impl PerchanceRule {
     }
 
     fn is_wrapper(rule: Rule) -> bool {
-        match rule {
-            Rule::sector_reference | Rule::store_value => true,
-            _ => false,
-        }
+        matches!(rule, Rule::sector_reference | Rule::store_value)
     }
 }
 impl Parse for PerchanceRule {
