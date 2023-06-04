@@ -42,7 +42,7 @@ fn setup_logger() -> ParseResult<()> {
                 message
             ))
         })
-        .level(log::LevelFilter::Trace)
+        .level(log::LevelFilter::Info)
         .chain(std::io::stdout())
         .chain(fern::log_file("output.log")?)
         .apply()
@@ -63,7 +63,12 @@ fn parse_file<P: AsRef<Path>>(path: P) -> ParseResult<Vec<Item>> {
     setup_logger()?;
     let unparsed_file = fs::read_to_string(path)?;
 
-    let mut file = match PerchanceParser::parse(Rule::file, &unparsed_file) {
+    parse_string(unparsed_file)
+}
+
+fn parse_string<S: ToString>(content: S) -> ParseResult<Vec<Item>> {
+    let content = content.to_string();
+    let mut file = match PerchanceParser::parse(Rule::file, &content) {
         Err(e) => {
             eprintln!("{}", e);
             panic!("{:?}", e.variant)
