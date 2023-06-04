@@ -16,7 +16,7 @@ pub struct Span {
     pub end: usize,
 }
 
-pub fn span(line: &Pair<Rule>) -> Span {
+pub fn get_span(line: &Pair<Rule>) -> Span {
     let s = line.as_span();
     Span {
         content: s.as_str().to_owned(),

@@ -17,7 +17,7 @@ property = {
 }
 
 name           = { ASCII_ALPHA+ }
-reference_name = {
+reference_name = _{
     name ~ ("." ~ reference_name)*
 }
 number         = { ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }

@@ -1,5 +1,5 @@
 pack
-	purse
+	{foo|bar}
 	backpack
 	bag
 	pack ^2

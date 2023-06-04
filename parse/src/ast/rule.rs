@@ -2,9 +2,8 @@ use log::trace;
 use pest::iterators::Pair;
 
 use crate::{
-    ast::span,
+    ast::get_span,
     error::{wot, ParseError, ParseResult},
-    macros::validate_rule,
     next, validate_rule, Rule,
 };
 
@@ -17,8 +16,7 @@ pub enum PerchanceRuleInner {
     },
     Options(Vec<Box<PerchanceRule>>),
     Reference {
-        parent: Box<PerchanceRule>,
-        child: Box<PerchanceRule>,
+        chain: Vec<Box<PerchanceRule>>,
     },
     Import {
         generator: String,
@@ -40,17 +38,34 @@ pub struct PerchanceRule {
     inner: PerchanceRuleInner,
 }
 impl PerchanceRule {
+    fn map_boxed(slf: ParseResult<Self>) -> ParseResult<Box<Self>> {
+        Ok(Box::new(slf?))
+    }
+    fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
     fn parse_boxed(line: Pair<Rule>) -> ParseResult<Box<Self>> {
         Ok(Box::new(Self::parse(line)?))
     }
     fn parse_raw(line: Pair<Rule>) -> ParseResult<Self> {
         validate_rule!(line.as_rule(), sector_raw);
 
-        let span = span(&line);
+        let span = get_span(&line);
         let inner = line.as_str().to_owned();
         Ok(Self {
             span,
             inner: PerchanceRuleInner::Raw(inner),
+        })
+    }
+    fn parse_name(line: Pair<Rule>) -> ParseResult<Self> {
+        validate_rule!(line.as_rule(), name);
+        let span = get_span(&line);
+
+        let name = line.as_str().to_owned();
+
+        Ok(Self {
+            span,
+            inner: PerchanceRuleInner::Name(name),
         })
     }
     fn parse_odds(line: Pair<Rule>) -> ParseResult<Self> {
@@ -60,18 +75,18 @@ impl PerchanceRule {
         validate_rule!(line.as_rule(), sector_odds);
         trace!("[EndOf:1] validate-rule");
 
-        let span = span(&line);
+        let span = get_span(&line);
 
         trace!("[Start:2] get-modifier");
         let mut rules = line.into_inner();
         let number = next!(rules, "rule-odds-number");
         validate_rule!(number.as_rule(), number);
-        trace!("[Start:2] get-modifier");
+        trace!("[EndOf:2] get-modifier");
 
-        trace!("[Start:2] parse-modifier");
+        trace!("[Start:3] parse-modifier");
         let modifier_raw = number.as_str();
         let modifier = str::parse(modifier_raw)?;
-        trace!("[Start:2] parse-modifier");
+        trace!("[EndOf:3] parse-modifier");
 
         trace!("[EndOf] parse-odds");
         Ok(Self {
@@ -80,11 +95,35 @@ impl PerchanceRule {
         })
     }
 
-    fn parse_compound(line: Pair<Rule>) -> Result<PerchanceRule, ParseError> {
+    fn parse_reference(line: Pair<Rule>) -> ParseResult<Self> {
+        trace!("[Start] parse-reference");
+
+        trace!("[Start:1] validate-rule");
+        validate_rule!(line.as_rule(), sector_reference);
+        trace!("[EndOf:1] validate-rule");
+
+        let span = get_span(&line);
+
+        trace!("[Start:2] get-references");
+        let rules = line.into_inner();
+        let chain = rules
+            .map(Self::parse_name)
+            .map(Self::map_boxed)
+            .collect::<ParseResult<Vec<_>>>()?;
+        trace!("[Start:2] get-references");
+
+        trace!("[EndOf] parse-reference");
+        Ok(Self {
+            span,
+            inner: PerchanceRuleInner::Reference { chain },
+        })
+    }
+
+    fn parse_compound(line: Pair<Rule>) -> ParseResult<PerchanceRule> {
         // TODO: validate_rule!
         // validate_rule!(line.as_rule(), rule);
 
-        let span = span(&line);
+        let span = get_span(&line);
         match line.as_rule() {
             Rule::rule => {
                 let rules = line.into_inner().collect::<Vec<_>>();
@@ -104,6 +143,30 @@ impl PerchanceRule {
             }
             _ => wot("parse-compound"),
         }
+    }
+
+    fn parse_shorthand(line: Pair<Rule>) -> ParseResult<PerchanceRule> {
+        trace!("[Start] parse-shorthand");
+
+        trace!("[Start:1] validate-rule");
+        validate_rule!(line.as_rule(), sector_shorthand);
+        trace!("[EndOf:1] validate-rule");
+
+        let span = get_span(&line);
+
+        trace!("[Start:2] get-options");
+        let rules = line.into_inner();
+        let options = rules
+            .map(Self::parse_name)
+            .map(Self::map_boxed)
+            .collect::<ParseResult<Vec<_>>>()?;
+        trace!("[Start:2] get-shorthands");
+
+        trace!("[EndOf] parse-shorthand");
+        Ok(Self {
+            span,
+            inner: PerchanceRuleInner::Options(options),
+        })
     }
 }
 impl Parse for PerchanceRule {
@@ -127,6 +190,8 @@ impl Parse for PerchanceRule {
             Rule::rule => Self::parse_compound(line),
             Rule::sector_raw => Self::parse_raw(line),
             Rule::sector_odds => Self::parse_odds(line),
+            Rule::sector_reference => Self::parse_reference(line),
+            Rule::sector_shorthand => Self::parse_shorthand(line),
             _ => wot("parse-rule"),
         };
         trace!("[EndOf:2] dispatch");
