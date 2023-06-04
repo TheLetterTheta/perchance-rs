@@ -1,0 +1,7 @@
+pack
+	purse
+	backpack
+	bag
+	pack ^2
+	knapsack
+	rucksack

@@ -1,0 +1,66 @@
+WHITESPACE = _{ " " }
+
+generator_name = {
+    ASCII_ALPHA+ ~ ("-" ~ ASCII_ALPHA+)*
+}
+
+property = {
+    "singularForm"
+  | "pastTense"
+  | "presentTense"
+  | "futureTense"
+  | "upperCase"
+  | "lowerCase"
+  | "sentenceCase"
+  | "titleCase"
+  | name
+}
+
+name           = { ASCII_ALPHA+ }
+reference_name = {
+    name ~ ("." ~ reference_name)*
+}
+number         = { ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+
+sector_raw       =  { (!(NEWLINE | sector_object) ~ ANY)+ ~ comment? }
+sector_store     =  { name ~ "=" ~ reference_name }
+referable        = _{
+    sector_store
+  | reference_name
+}
+sector_reference =  { "[" ~ referable ~ "]" }
+sector_odds      =  { "^" ~ number }
+import           =  { "import:" ~ generator_name }
+shorthandable    = _{ sector_object | import | referable }
+sector_shorthand =  { "{" ~ shorthandable ~ ("|" ~ shorthandable)* ~ "}" }
+
+sector_object = _{
+    sector_odds
+  | sector_shorthand
+  | sector_reference
+}
+sector        = _{
+    sector_object
+  | sector_raw
+}
+
+rule = ${
+    WHITESPACE* ~ (sector)+ 
+}
+
+wsp   = _{ (WHITESPACE | "\t")* }
+newl  = _{ NEWLINE ~ wsp? }
+rules =  { (rule ~ newl)+ }
+// TODO: Rule level comments 
+// foo
+//   bar // this is a comment about foo:bar
+comment = { "//" ~ (!NEWLINE ~ ANY)* }
+
+section = {
+    comment
+  | name ~ "=" ~ rule ~ newl*
+  | name ~ newl ~ rules ~ newl*
+}
+
+
+file = { SOI ~ (newl* ~ section ~ newl*)* ~ EOI }

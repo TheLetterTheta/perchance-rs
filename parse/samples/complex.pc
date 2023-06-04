@@ -1,0 +1,52 @@
+
+output
+	[packDescription] [observation] {[decision]|[sadObservation]}
+	
+packDescription
+	Your [pack] contains [i = item.consumableList], [i] and [i].
+	There's not much in your [pack] - just [item].
+	
+item
+	some coins
+	an old {silver|bronze} ring
+	a handkerchief
+	a shard of bone
+	some lint ^2 
+	a tin of tobacco
+	a magical ring ^0.1 
+	
+pack
+	purse
+	backpack
+	bag
+	pack ^2
+	knapsack
+	rucksack
+	
+observation
+	The sun is setting.
+	You hear a faint howl in the distance.
+	Your stomach grumbles.
+	A falling leaf startles you.
+	The moon emerges from behind a cloud.
+	
+sadObservation
+	Looks like you're running out of {import:common-noun}.
+	You've just eaten your last {import:vegetable}.
+	You start to wonder why you're even out here.
+	Maybe they're right; this is no place for {a} [unusualAnimal.selectOne.def]. ^2
+	The world just seems too {import:adjective}.
+	This whole situation reminds you so much of {PROJECT|OPERATION} [codename.upperCase].
+	
+codename = {import:project-codename}
+unusualAnimal = {import:unusual-animal}
+	
+decision
+	You decide that it's time to [doAThing].
+	You can't wait any longer. It's time to [doAThing].
+	
+doAThing
+	{import:verb} {a} {import:concrete-noun} 
+	make a text generator ^0.05
+
+	
