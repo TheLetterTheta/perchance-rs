@@ -102,7 +102,7 @@ impl PerchanceRule {
         trace!("[Start] parse-reference");
 
         trace!("[Start:1] validate-rule");
-        validate_rule!(line.as_rule(), sector_reference);
+        validate_rule!(line.as_rule(), reference_name);
         trace!("[EndOf:1] validate-rule");
 
         let span = get_span(&line);
@@ -170,7 +170,7 @@ impl PerchanceRule {
         })
     }
 
-    fn parse_import(line: Pair<Rule>) -> Result<PerchanceRule, ParseError> {
+    fn parse_import(line: Pair<Rule>) -> ParseResult<PerchanceRule> {
         validate_rule!(line.as_rule(), import);
         let span = get_span(&line);
 
@@ -183,6 +183,42 @@ impl PerchanceRule {
             span,
             inner: PerchanceRuleInner::Import { generator },
         })
+    }
+
+    fn parse_store(line: Pair<Rule>) -> ParseResult<PerchanceRule> {
+        trace!("[Start] parse-store");
+
+        trace!("[Start:1] validate-rule");
+        validate_rule!(line.as_rule(), sector_store);
+        trace!("[EndOf:1] validate-rule");
+
+        let span = get_span(&line);
+
+        trace!("[Start:2] get-rules");
+        let mut rules = line.into_inner();
+        let key = next!(rules, "rule-store-name");
+        let value = next!(rules, "rule-store-value");
+        validate_rule!(key.as_rule(), name);
+        validate_rule!(value.as_rule(), store_value);
+        trace!("[EndOf:2] get-rules");
+
+        trace!("[Start:3] parse-modifier");
+        let name = key.as_str().to_owned();
+        let value = Self::parse_boxed(value)?;
+        trace!("[EndOf:3] parse-modifier");
+
+        trace!("[EndOf] parse-store");
+        Ok(Self {
+            span,
+            inner: PerchanceRuleInner::Store { name, value },
+        })
+    }
+
+    fn is_wrapper(rule: Rule) -> bool {
+        match rule {
+            Rule::sector_reference | Rule::store_value => true,
+            _ => false,
+        }
     }
 }
 impl Parse for PerchanceRule {
@@ -199,6 +235,8 @@ impl Parse for PerchanceRule {
             sector_reference,
             reference_name,
             sector_odds,
+            sector_store,
+            store_value,
             sector_shorthand
         );
         trace!("[EndOf:1] validate-rule");
@@ -209,9 +247,12 @@ impl Parse for PerchanceRule {
             Rule::sector_raw => Self::parse_raw(line),
             Rule::name => Self::parse_name(line),
             Rule::sector_odds => Self::parse_odds(line),
-            Rule::sector_reference => Self::parse_reference(line),
+            Rule::reference_name => Self::parse_reference(line),
             Rule::sector_shorthand => Self::parse_shorthand(line),
+            Rule::sector_store => Self::parse_store(line),
             Rule::import => Self::parse_import(line),
+
+            rule if Self::is_wrapper(rule) => Self::parse(line.into_inner().next().unwrap()),
             _ => wot("parse-rule"),
         };
         trace!("[EndOf:2] dispatch");

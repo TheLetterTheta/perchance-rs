@@ -17,13 +17,14 @@ property = {
 }
 
 name           = { ASCII_ALPHA+ }
-reference_name = _{
-    name ~ ("." ~ reference_name)*
+reference_name = ${
+    name ~ ("." ~ name)*
 }
 number         = { ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 
 sector_raw       =  { (!(NEWLINE | sector_object) ~ ANY)+ ~ comment? }
-sector_store     =  { name ~ "=" ~ reference_name }
+store_value 	 =  { reference_name }
+sector_store     =  { name ~ " "* ~ "=" ~ " "* ~ store_value }
 referable        = _{
     sector_store
   | reference_name
