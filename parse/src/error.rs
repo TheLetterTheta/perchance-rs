@@ -1,3 +1,4 @@
+use std::io::Error as IOError;
 use std::num::ParseFloatError;
 
 use thiserror::Error;
@@ -14,6 +15,8 @@ pub enum ParseError {
     MissingItem { slug: &'static str },
     #[error("Error parsing float: {0}")]
     ParseFloatError(#[from] ParseFloatError),
+    #[error("IO Error: {0}")]
+    IOError(#[from] IOError),
     #[error("Unexpected rule({origin}) : {rule}")]
     UnexpectedRule { rule: String, origin: &'static str },
 }
