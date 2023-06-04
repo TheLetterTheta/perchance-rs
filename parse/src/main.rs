@@ -1,4 +1,7 @@
-use std::fs;
+use std::{
+    fs::{self, File},
+    io::Write,
+};
 
 mod ast;
 mod error;
@@ -41,7 +44,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
 }
 fn main() {
     setup_logger().unwrap();
-    let unparsed_file = fs::read_to_string("samples/pack.pc").expect("cannot read file");
+    let unparsed_file = fs::read_to_string("samples/complex.pc").expect("cannot read file");
 
     let mut file = match PerchanceParser::parse(Rule::file, &unparsed_file) {
         Err(e) => {
@@ -52,13 +55,21 @@ fn main() {
     };
     let file = file.next().unwrap(); // get and unwrap the `file` rule; never fails
 
+    let mut items = Vec::new();
+
     for line in file.into_inner() {
         match line.as_rule() {
             Rule::section => {
                 let item = Item::parse(line).unwrap();
-                println!("item={:#?}", item)
+                println!("item={:#?}", item);
+                items.push(item);
             }
             _ => println!("{:#?}: {:?}", line.as_rule(), line.into_inner()),
         }
     }
+
+    let json = serde_json::to_string(&items).unwrap();
+
+    let mut f = File::create("drop/out.json").unwrap();
+    f.write(json.as_bytes()).unwrap();
 }

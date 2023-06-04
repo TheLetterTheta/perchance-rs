@@ -1,13 +1,15 @@
 use log::trace;
 use pest::iterators::Pair;
+use serde::Serialize;
 
 use crate::{ast::get_span, error::ParseResult, next, validate_rule, Rule};
 
 use super::{rule::PerchanceRule, Parse, Span};
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Debug, Default, Clone, PartialEq)]
 pub struct Item {
     name: String,
+    #[serde(skip)]
     span: Span,
     rules: Vec<PerchanceRule>,
 }

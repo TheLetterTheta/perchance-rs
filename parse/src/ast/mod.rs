@@ -1,4 +1,5 @@
 use pest::iterators::Pair;
+use serde::Serialize;
 
 use crate::{error::ParseResult, Rule};
 
@@ -9,7 +10,7 @@ pub trait Parse: Sized {
     fn parse(line: Pair<Rule>) -> ParseResult<Self>;
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub content: String,
     pub start: usize,

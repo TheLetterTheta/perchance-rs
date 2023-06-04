@@ -1,5 +1,6 @@
 use log::trace;
 use pest::iterators::Pair;
+use serde::Serialize;
 
 use crate::{
     ast::get_span,
@@ -9,7 +10,7 @@ use crate::{
 
 use super::{Parse, Span};
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Debug, Default, Clone, PartialEq)]
 pub enum PerchanceRuleInner {
     Odds {
         modifier: f32,
@@ -32,9 +33,11 @@ pub enum PerchanceRuleInner {
     Nop,
 }
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Debug, Default, Clone, PartialEq)]
 pub struct PerchanceRule {
+    #[serde(skip)]
     span: Span,
+    #[serde(flatten)]
     inner: PerchanceRuleInner,
 }
 impl PerchanceRule {
@@ -107,8 +110,7 @@ impl PerchanceRule {
         trace!("[Start:2] get-references");
         let rules = line.into_inner();
         let chain = rules
-            .map(Self::parse_name)
-            .map(Self::map_boxed)
+            .map(Self::parse_boxed)
             .collect::<ParseResult<Vec<_>>>()?;
         trace!("[Start:2] get-references");
 
@@ -157,15 +159,29 @@ impl PerchanceRule {
         trace!("[Start:2] get-options");
         let rules = line.into_inner();
         let options = rules
-            .map(Self::parse_name)
-            .map(Self::map_boxed)
+            .map(Self::parse_boxed)
             .collect::<ParseResult<Vec<_>>>()?;
-        trace!("[Start:2] get-shorthands");
+        trace!("[Start:2] get-options");
 
         trace!("[EndOf] parse-shorthand");
         Ok(Self {
             span,
             inner: PerchanceRuleInner::Options(options),
+        })
+    }
+
+    fn parse_import(line: Pair<Rule>) -> Result<PerchanceRule, ParseError> {
+        validate_rule!(line.as_rule(), import);
+        let span = get_span(&line);
+
+        let mut rules = line.into_inner();
+        let generator = next!(rules, "rule-import-generator");
+        validate_rule!(generator.as_rule(), generator_name);
+        let generator = generator.as_str().to_owned();
+
+        Ok(Self {
+            span,
+            inner: PerchanceRuleInner::Import { generator },
         })
     }
 }
@@ -177,6 +193,8 @@ impl Parse for PerchanceRule {
         validate_rule!(
             line.as_rule(),
             rule,
+            name,
+            import,
             sector_raw,
             sector_reference,
             reference_name,
@@ -189,9 +207,11 @@ impl Parse for PerchanceRule {
         let rule = match line.as_rule() {
             Rule::rule => Self::parse_compound(line),
             Rule::sector_raw => Self::parse_raw(line),
+            Rule::name => Self::parse_name(line),
             Rule::sector_odds => Self::parse_odds(line),
             Rule::sector_reference => Self::parse_reference(line),
             Rule::sector_shorthand => Self::parse_shorthand(line),
+            Rule::import => Self::parse_import(line),
             _ => wot("parse-rule"),
         };
         trace!("[EndOf:2] dispatch");
